@@ -1,5 +1,5 @@
 use crate::{
-    components::{Button, ButtonVariant},
+    components::{Button, ButtonVariant, Input},
     AppState,
 };
 use dioxus::prelude::*;
@@ -7,22 +7,34 @@ use dioxus::prelude::*;
 /// The Home page component that will be rendered when the current route is `[Route::Home]`
 #[component]
 pub fn Home() -> Element {
-    let mut file_contents = use_signal(|| "".to_string());
-    let mut state = use_context::<Signal<AppState>>();
+    let mut master_password = use_signal(|| "".to_string());
+    let mut username = use_signal(|| "".to_string());
 
     rsx! {
-        div { {file_contents} }
-        Button {
-            variant: ButtonVariant::Secondary,
-            onclick: move |_| {
-                file_contents.set(read_file_contents());
-                state.set(AppState { signed_in: true });
+        form {
+            onsubmit: move |_| {
+                println!("Username: {username}, password: {master_password}");
             },
-            "Click Me"
+            Input {
+                name: "username",
+                placeholder: "Enter Username",
+                r#type: "text",
+                value: username,
+                value_changed: move |evt: FormEvent| {
+                    username.set(evt.value());
+                },
+            }
+            Input {
+                name: "master_password",
+                placeholder: "Enter Password",
+                r#type: "password",
+                value: master_password,
+                value_changed: move |evt: FormEvent| {
+                    master_password.set(evt.value());
+                },
+
+            }
+            Button { r#type: "submit", variant: ButtonVariant::Secondary, "Submit" }
         }
     }
-}
-
-fn read_file_contents() -> String {
-    std::fs::read_to_string("/home/th3oth3rjak3/.password_manager/thing.txt").unwrap()
 }
