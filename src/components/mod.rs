@@ -10,3 +10,6 @@ pub use navbar::*;
 
 pub mod input;
 pub use input::*;
+
+pub mod svgs;
+pub use svgs::*;

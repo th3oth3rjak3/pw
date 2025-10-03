@@ -13,6 +13,7 @@ use dioxus::{
 mod components;
 mod models;
 mod routes;
+mod services;
 mod views;
 
 use directories::UserDirs;
@@ -114,8 +115,8 @@ fn load_password_data() -> PasswordData {
 
     if password_file_path.exists() {
         // do something with the file like load its contents
-        let mut password_file = fs::File::create_new(password_file_path)
-            .unwrap_or_else(|_| bail("Could not create required password file."));
+        let mut password_file = fs::File::open(password_file_path)
+            .unwrap_or_else(|_| bail("Could not open required password file."));
 
         let mut file_contents = String::new();
         password_file
@@ -128,9 +129,8 @@ fn load_password_data() -> PasswordData {
         return password_data;
     } else {
         // create the file
-
         let mut password_file = fs::File::create_new(password_file_path)
-            .unwrap_or_else(|_| bail("Could not create required password file."));
+            .unwrap_or_else(|_| bail("Could not create required password file"));
 
         let data = serde_json::to_string(&PasswordData::default())
             .unwrap_or_else(|_| bail("Can not generate password contents."));

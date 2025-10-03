@@ -1,5 +1,6 @@
 use crate::{
     components::{Navbar, NavbarItem},
+    services::authentication,
     AppState, Route,
 };
 use dioxus::prelude::*;
@@ -21,17 +22,11 @@ pub fn Layout() -> Element {
             href: asset!("/src/components/navbar/style.css"),
         }
         Navbar { style: "margin-bottom: 5px",
-            NavbarItem {
-                index: 0usize,
-                value: "home".to_string(),
-                to: Route::Home {},
-                "Home"
-            }
             if signed_in() {
                 NavbarItem {
                     index: 1usize,
                     value: "vault".to_string(),
-                    to: Route::Vault {},
+                    to: Route::vault(),
                     disabled: !state.read().signed_in,
                     "Vault"
                 }
@@ -40,9 +35,9 @@ pub fn Layout() -> Element {
                     index: 10usize,
                     style: "margin-left: auto",
                     value: "logout".to_string(),
-                    to: Route::Home {},
+                    to: Route::home(),
                     onclick: move |_| {
-                        state.set(AppState::default());
+                        state.set(authentication::logout());
                     },
                     "Logout"
                 }

@@ -14,3 +14,13 @@ pub enum Route {
         #[route("/vault")]
         Vault {}
 }
+
+impl Route {
+    pub fn vault() -> Self {
+        Route::Vault {}
+    }
+
+    pub fn home() -> Self {
+        Route::Home {}
+    }
+}
