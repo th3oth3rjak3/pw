@@ -17,7 +17,7 @@ mod views;
 use directories::UserDirs;
 use routes::Route;
 
-use crate::{components::ToastProvider, services::database::DatabaseService};
+use crate::{components::ToastProvider, models::AuthState, services::database::DatabaseService};
 
 const FAVICON: Asset = asset!("/assets/favicon.ico");
 const MAIN_CSS: Asset = asset!("/assets/styling/main.css");
@@ -46,11 +46,6 @@ fn App() -> Element {
 
         ToastProvider { Router::<Route> {} }
     }
-}
-
-#[derive(Debug, Clone, Default, PartialEq, Copy)]
-pub struct AuthState {
-    pub signed_in: bool,
 }
 
 async fn init_launcher() -> LaunchBuilder {

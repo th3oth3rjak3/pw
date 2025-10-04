@@ -1,4 +1,4 @@
-use crate::{services::database::DatabaseService, AuthState};
+use crate::{models::AuthState, services::database::DatabaseService};
 use argon2::{
     password_hash::{rand_core::OsRng, SaltString},
     Argon2, PasswordHash, PasswordHasher, PasswordVerifier,
