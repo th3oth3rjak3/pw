@@ -4,7 +4,11 @@ use dioxus::prelude::*;
 use dioxus_primitives::toast::{use_toast, ToastOptions};
 
 use crate::{
-    components::{Button, ButtonVariant, Card, Field, FieldGroup, Input, PasswordInput},
+    components::{
+        AlertDialogAction, AlertDialogActions, AlertDialogCancel, AlertDialogContent,
+        AlertDialogDescription, AlertDialogRoot, AlertDialogTitle, Button, ButtonVariant, Card,
+        Field, FieldGroup, Input, PasswordInput,
+    },
     models::{AuthState, PasswordEntryRaw},
     routes::Route,
     services::{database::DatabaseService, password_entry},
@@ -22,13 +26,18 @@ pub fn PasswordDetails(id: i32) -> Element {
         navigator.replace(Route::home());
     }
 
+    // Original entry details, used to restore fields once editing is cancelled
     let mut site = use_signal(|| "".to_string());
     let mut username = use_signal(|| "".to_string());
     let mut raw_password = use_signal(|| "".to_string());
 
+    // The values of the fields when editing and viewing.
     let mut new_site = use_signal(|| "".to_string());
     let mut new_username = use_signal(|| "".to_string());
     let mut new_raw_password = use_signal(|| "".to_string());
+
+    // Used for the delete confirmation dialog
+    let mut confirmation_open = use_signal(|| false);
 
     let entry = use_resource(move || {
         let auth_state = auth_state().clone();
@@ -86,6 +95,28 @@ pub fn PasswordDetails(id: i32) -> Element {
         });
     };
 
+    let delete_pw = move |id: i32| {
+        let db_service = db_service.clone();
+
+        spawn(async move {
+            match password_entry::delete_password(id, db_service().as_ref()).await {
+                Ok(()) => {
+                    navigator.replace(Route::vault());
+                }
+                Err(e) => {
+                    toast_api.error(
+                        "Error".into(),
+                        ToastOptions::new()
+                            .description(format!(
+                                "Error occurred that requires developer attention: {e}"
+                            ))
+                            .permanent(true),
+                    );
+                }
+            }
+        });
+    };
+
     let mut editing_password = use_signal(|| false);
 
     match entry() {
@@ -134,6 +165,30 @@ pub fn PasswordDetails(id: i32) -> Element {
                                 variant: ButtonVariant::Ghost,
                                 onclick: move |_| editing_password.set(true),
                                 "Edit"
+                            }
+                            Button {
+                                variant: ButtonVariant::Destructive,
+                                onclick: move |_| confirmation_open.set(true),
+                                "Delete"
+                            }
+                            AlertDialogRoot {
+                                open: confirmation_open(),
+                                on_open_change: move |v| confirmation_open.set(v),
+                                AlertDialogContent {
+                                    AlertDialogTitle { "Delete item" }
+                                    AlertDialogDescription {
+                                        "Are you sure you want to delete this item? This action cannot be undone."
+                                    }
+                                    AlertDialogActions {
+                                        AlertDialogCancel { "Cancel" }
+                                        AlertDialogAction {
+                                            on_click: move |_| {
+                                                delete_pw(id.clone());
+                                            },
+                                            "Delete"
+                                        }
+                                    }
+                                }
                             }
                         }
                         if editing_password() {

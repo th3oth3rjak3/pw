@@ -41,11 +41,7 @@ pub fn CreateMasterPassword() -> Element {
                 }
                 Err(e) => toast_api.error(
                     "Error".into(),
-                    ToastOptions::new()
-                        .description(format!(
-                            "Error occurred that requires developer attention: {e}"
-                        ))
-                        .permanent(true),
+                    ToastOptions::new().description(e).permanent(true),
                 ),
             }
         })
@@ -87,7 +83,6 @@ pub fn CreateMasterPassword() -> Element {
                     value_changed: move |evt: FormEvent| {
                         password.set(evt.value());
                     },
-                
                 }
                 div {
                     PasswordInput {

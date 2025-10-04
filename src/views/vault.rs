@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 use dioxus::prelude::*;
 use dioxus_primitives::{
@@ -10,7 +10,7 @@ use crate::{
     components::{Button, ButtonVariant, Card, ScrollArea},
     models::AuthState,
     routes::Route,
-    services::{database::DatabaseService, password_entry},
+    services::{clipboard, database::DatabaseService, password_entry},
 };
 
 #[component]
@@ -54,7 +54,13 @@ pub fn Vault() -> Element {
                 width: "100%",
                 height: "calc(100vh - 110px)",
                 div { style: "display: block",
-                    Button { variant: ButtonVariant::Ghost, "Add Password" }
+                    Button {
+                        variant: ButtonVariant::Ghost,
+                        onclick: move |_| {
+                            navigator.push(Route::new_password_entry());
+                        },
+                        "Add Password"
+                    }
                 }
                 ScrollArea {
                     height: "calc(100vh - 250px)",
@@ -94,6 +100,8 @@ pub fn Vault() -> Element {
 fn PasswordEntryCard(id: i32, site: String, username: String, password: String) -> Element {
     let navigator = use_navigator();
     let mut show_password = use_signal(|| false);
+    let password = use_signal(|| password);
+    let toast_api = use_toast();
 
     rsx! {
         div {
@@ -157,165 +165,18 @@ fn PasswordEntryCard(id: i32, site: String, username: String, password: String) 
                 Button {
                     variant: ButtonVariant::Ghost,
                     style: "width: 70px; min-width: 70px;",
-                    onclick: |evt: Event<MouseData>| evt.stop_propagation(),
+                    onclick: move |evt: Event<MouseData>| {
+                        evt.stop_propagation();
+                        let message = clipboard::copy_to_clipboard(password().clone());
+                        toast_api
+                            .success(
+                                "Copied!".into(),
+                                ToastOptions::new().description(message).duration(Duration::from_secs(5)),
+                            )
+                    },
                     "Copy"
                 }
             }
         }
     }
 }
-
-// #[component]
-// fn PasswordEntryCard(id: i32, site: String, username: String, password: String) -> Element {
-//     let navigator = use_navigator();
-//     let mut show_password = use_signal(|| false);
-
-//     rsx! {
-//         div {
-//             style: "
-//                 background: #1e1e1e;
-//                 border: 1px solid #2a2a2a;
-//                 border-radius: 12px;
-//                 padding: 0.8rem 1.2rem;
-//                 margin-bottom: 0.7rem;
-//                 display: flex;
-//                 flex-direction: column;
-//                 gap: 0.4rem;
-//                 box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
-//                 cursor: pointer;
-//                 transition: background 0.15s, border 0.15s;
-//             ",
-//             onclick: move |_| {
-//                 navigator.push(Route::password_details(id));
-//             },
-
-//             // Title (site name)
-//             div { style: "display: flex; justify-content: space-between; align-items: center;",
-//                 strong { style: "font-size: 1rem; color: #f0f0f0;", "{site}" }
-//             }
-
-//             // Username row
-//             div { style: "display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; color: #ccc;",
-//                 div { style: "font-weight: 500; min-width: 80px;", "Username:" }
-//                 div { style: "flex: 1; overflow: hidden; text-overflow: ellipsis;",
-//                     "{username}"
-//                 }
-//             }
-
-//             // Password row
-//             div { style: "display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; color: #ccc;",
-//                 div { style: "font-weight: 500; min-width: 80px;", "Password:" }
-//                 div { style: "flex: 1; overflow: hidden; text-overflow: ellipsis;",
-//                     if show_password() {
-//                         "{password}"
-//                     } else {
-//                         "••••••••"
-//                     }
-//                 }
-
-//                 // Buttons for this row
-//                 div { style: "display: flex; gap: 0.4rem; flex-shrink: 0;",
-//                     Button {
-//                         variant: ButtonVariant::Ghost,
-//                         style: "width: 70px; min-width: 70px;",
-//                         onclick: move |evt: Event<MouseData>| {
-//                             evt.stop_propagation();
-//                             show_password.set(!show_password());
-//                         },
-//                         if show_password() {
-//                             "Hide"
-//                         } else {
-//                             "Show"
-//                         }
-//                     }
-//                     Button {
-//                         variant: ButtonVariant::Ghost,
-//                         style: "width: 70px; min-width: 70px;",
-//                         onclick: |evt: Event<MouseData>| evt.stop_propagation(),
-//                         "Copy"
-//                     }
-//                 }
-//             }
-//         }
-//     }
-// }
-
-// #[component]
-// fn PasswordEntryCard(id: i32, site: String, username: String, password: String) -> Element {
-//     let navigator = use_navigator();
-//     let mut show_password = use_signal(|| false);
-
-//     rsx! {
-//         div {
-//             style: "
-//                 background: #1e1e1e;
-//                 border: 1px solid #2a2a2a;
-//                 border-radius: 12px;
-//                 padding: 0.8rem 1.2rem;
-//                 margin-bottom: 0.7rem;
-//                 display: flex;
-//                 flex-direction: column;
-//                 gap: 0.4rem;
-//                 box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
-//                 cursor: pointer;
-//                 transition: background 0.15s, border 0.15s;
-//             ",
-//             onclick: move |_| {
-//                 navigator.push(Route::password_details(id));
-//             },
-
-//             // Title (site name)
-//             div { style: "display: flex; justify-content: space-between; align-items: center;",
-//                 strong { style: "font-size: 1rem; color: #f0f0f0;", "{site}" }
-//             }
-
-//             // Username + password row
-//             div { style: "display: flex; justify-content: space-between; align-items: center; width: 100%;",
-//                 div { style: "
-//                         display: flex;
-//                         gap: 2rem;
-//                         color: #aaa;
-//                         flex: 1;
-//                         min-width: 0;
-//                         font-size: 0.9rem;
-//                     ",
-//                     div {
-//                         span { style: "font-weight: 500; color: #ccc;", "Username: " }
-//                         span { "{username}" }
-//                     }
-//                     div { style: "min-width: 100px; overflow: hidden;",
-//                         span { style: "font-weight: 500; color: #ccc;", "Password: " }
-//                         if show_password() {
-//                             span { "{password}" }
-//                         } else {
-//                             span { "••••••••" }
-//                         }
-//                     }
-//                 }
-
-//                 // Buttons
-//                 div { style: "display: flex; gap: 0.4rem; flex-shrink: 0;",
-//                     Button {
-//                         variant: ButtonVariant::Ghost,
-//                         style: "width: 70px; min-width: 70px;",
-//                         onclick: move |evt: Event<MouseData>| {
-//                             evt.stop_propagation();
-//                             show_password.set(!show_password());
-//                         },
-//                         if show_password() {
-//                             "Hide"
-//                         } else {
-//                             "Show"
-//                         }
-//                     }
-//                     Button {
-//                         variant: ButtonVariant::Ghost,
-//                         style: "width: 70px; min-width: 70px;",
-//                         onclick: |evt: Event<MouseData>| evt.stop_propagation(),
-//                         "Copy"
-//                     }
-//                 }
-//             }
-//         }
-//     }
-// }

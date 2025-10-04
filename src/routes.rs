@@ -19,6 +19,9 @@ pub enum Route {
 
         #[route("/vault/:id")]
         PasswordDetails { id: i32 },
+
+        #[route("/new_password_entry")]
+        NewPasswordEntry {}
 }
 
 impl Route {
@@ -40,5 +43,9 @@ impl Route {
 
     pub fn password_details(id: i32) -> Self {
         Route::PasswordDetails { id }
+    }
+
+    pub fn new_password_entry() -> Self {
+        Route::NewPasswordEntry {}
     }
 }

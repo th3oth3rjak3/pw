@@ -8,6 +8,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.100"
+arboard = { version = "3.6.1", features = ["wayland-data-control"] }
 argon2 = { version = "0.5.3", features = ["std"] }
 dioxus = { version = "0.7.0-rc.0", features = ["router"] }
 dioxus-primitives = { git = "https://github.com/DioxusLabs/components", version = "0.0.1" }

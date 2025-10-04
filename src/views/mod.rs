@@ -25,3 +25,6 @@ pub use login::*;
 
 mod password_details;
 pub use password_details::*;
+
+mod new_password_entry;
+pub use new_password_entry::*;

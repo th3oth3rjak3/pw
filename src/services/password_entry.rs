@@ -1,13 +1,24 @@
-use dioxus::core::spawn;
-use sqlx::{prelude::*, Database};
+use sqlx::prelude::*;
 
 use crate::{
     models::{AuthState, PasswordEntryRaw, PasswordEntrySafe},
     services::database::DatabaseService,
 };
 
-pub fn create_password_entry() -> anyhow::Result<AuthState> {
-    todo!()
+pub async fn create_password_entry(
+    new_entry: PasswordEntryRaw,
+    auth_state: &AuthState,
+    db_service: &DatabaseService,
+) -> Result<(), String> {
+    let safe = new_entry.to_safe(auth_state);
+    sqlx::query("insert into password_entries (site, username, password_hash) values (?, ?, ?);")
+        .bind(safe.site.clone())
+        .bind(safe.username.clone())
+        .bind(safe.password_hash.clone())
+        .execute(&db_service.pool)
+        .await
+        .map(|_| ())
+        .map_err(|err| err.to_string())
 }
 
 pub async fn get_all_password_entries(
@@ -77,5 +88,27 @@ pub async fn save_updated_password(
     auth_state: &AuthState,
     db_service: &DatabaseService,
 ) -> Result<(), String> {
-    todo!()
+    let safe = password_entry.to_safe(auth_state);
+
+    sqlx::query(
+        "update password_entries set site = ?, username = ?, password_hash = ? where id = ?",
+    )
+    .bind(safe.site.clone())
+    .bind(safe.username.clone())
+    .bind(safe.password_hash.clone())
+    .bind(id)
+    .execute(&db_service.pool)
+    .await
+    .map_err(|err| err.to_string())?;
+
+    Ok(())
+}
+
+pub async fn delete_password(id: i32, db_service: &DatabaseService) -> Result<(), String> {
+    sqlx::query("delete from password_entries where id = ?")
+        .bind(id)
+        .execute(&db_service.pool)
+        .await
+        .map(|_| ())
+        .map_err(|err| err.to_string())
 }

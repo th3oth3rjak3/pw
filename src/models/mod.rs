@@ -32,6 +32,21 @@ pub struct PasswordEntryRaw {
     pub raw_password: String,
 }
 
+impl PasswordEntryRaw {
+    pub fn to_safe(&self, auth_state: &AuthState) -> PasswordEntrySafe {
+        PasswordEntrySafe {
+            id: self.id,
+            site: self.site.clone(),
+            username: self.username.clone(),
+            password_hash: self.encrypt_password(auth_state),
+        }
+    }
+    fn encrypt_password(&self, auth_state: &AuthState) -> String {
+        // TODO: use key derivation function to encrypt the password.
+        self.raw_password.clone()
+    }
+}
+
 // TODO: add key derivation function to the auth state and impl the default trait manually
 #[derive(Debug, Clone, Default, PartialEq, Copy)]
 pub struct AuthState {
