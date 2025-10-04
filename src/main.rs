@@ -1,8 +1,6 @@
 use std::{
-    fs,
-    io::{Read, Write},
     path::PathBuf,
-    sync::OnceLock,
+    sync::{Arc, OnceLock},
 };
 
 use dioxus::{
@@ -19,7 +17,7 @@ mod views;
 use directories::UserDirs;
 use routes::Route;
 
-use crate::models::PasswordData;
+use crate::{components::ToastProvider, services::database::DatabaseService};
 
 const FAVICON: Asset = asset!("/assets/favicon.ico");
 const MAIN_CSS: Asset = asset!("/assets/styling/main.css");
@@ -30,56 +28,41 @@ static DATA_DIR: OnceLock<PathBuf> = OnceLock::new();
 fn main() {
     init_data_directory();
 
-    let launcher = init_launcher();
-    launcher.launch(|| {
-        let data = load_password_data();
-        let props = AppProps {
-            state: AppState::new(false, data),
-        };
+    let launcher = tokio::runtime::Runtime::new()
+        .unwrap()
+        .block_on(async move { init_launcher().await });
 
-        App(props)
-    });
-}
-
-#[derive(Debug, Clone, Default, PartialEq)]
-pub struct AppState {
-    pub signed_in: bool,
-    pub password_data: PasswordData,
-}
-
-impl AppState {
-    pub fn new(signed_in: bool, password_data: PasswordData) -> Self {
-        Self {
-            signed_in,
-            password_data,
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Props)]
-struct AppProps {
-    state: AppState,
+    launcher.launch(App);
 }
 
 #[component]
-fn App(props: AppProps) -> Element {
-    let state = use_signal(|| props.state);
-
-    use_context_provider(move || state);
+fn App() -> Element {
+    provide_context(Signal::new(AuthState::default()));
 
     rsx! {
         document::Link { rel: "icon", href: FAVICON }
         document::Link { rel: "stylesheet", href: MAIN_CSS }
         document::Link { rel: "stylesheet", href: COMPONENT_CSS }
 
-        Router::<Route> {}
+        ToastProvider { Router::<Route> {} }
     }
 }
 
-fn init_launcher() -> LaunchBuilder {
+#[derive(Debug, Clone, Default, PartialEq, Copy)]
+pub struct AuthState {
+    pub signed_in: bool,
+}
+
+async fn init_launcher() -> LaunchBuilder {
     let app_name = "Password Manager";
+
+    let db_service =
+        Arc::new(DatabaseService::new(DATA_DIR.get().unwrap().join("passwords.sqlite")).await);
+
+    let mut builder = dioxus::LaunchBuilder::desktop();
+
     if cfg!(debug_assertions) {
-        dioxus::LaunchBuilder::desktop().with_cfg(desktop! {
+        builder = builder.with_cfg(desktop! {
             Config::new().with_window(
                 WindowBuilder::new()
                     .with_title(app_name)
@@ -87,7 +70,7 @@ fn init_launcher() -> LaunchBuilder {
             )
         })
     } else {
-        dioxus::LaunchBuilder::desktop().with_cfg(desktop! {
+        builder = builder.with_cfg(desktop! {
             Config::new().with_window(
                 WindowBuilder::new()
                     .with_title(app_name)
@@ -95,6 +78,10 @@ fn init_launcher() -> LaunchBuilder {
             ).with_menu(None)
         })
     }
+
+    builder = builder.with_context(db_service);
+
+    builder
 }
 
 fn init_data_directory() {
@@ -108,43 +95,4 @@ fn init_data_directory() {
         println!("Could not find user directories. Exiting...");
         std::process::exit(1);
     }
-}
-
-fn load_password_data() -> PasswordData {
-    let password_file_path = DATA_DIR.get().unwrap().join("passwords.json");
-
-    if password_file_path.exists() {
-        // do something with the file like load its contents
-        let mut password_file = fs::File::open(password_file_path)
-            .unwrap_or_else(|_| bail("Could not open required password file."));
-
-        let mut file_contents = String::new();
-        password_file
-            .read_to_string(&mut file_contents)
-            .unwrap_or_else(|_| bail("Could not read password file contents."));
-
-        let password_data: PasswordData = serde_json::from_str(&file_contents)
-            .unwrap_or_else(|_| bail("Could not read password file contents."));
-
-        return password_data;
-    } else {
-        // create the file
-        let mut password_file = fs::File::create_new(password_file_path)
-            .unwrap_or_else(|_| bail("Could not create required password file"));
-
-        let data = serde_json::to_string(&PasswordData::default())
-            .unwrap_or_else(|_| bail("Can not generate password contents."));
-
-        password_file
-            .write_all(data.as_bytes())
-            .unwrap_or_else(|_| bail("Can not write to password file."));
-
-        PasswordData::default()
-    }
-}
-
-fn bail(error: impl Into<String>) -> ! {
-    let message: String = error.into();
-    eprintln!("{message}");
-    std::process::exit(1);
 }

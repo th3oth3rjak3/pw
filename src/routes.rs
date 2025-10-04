@@ -8,6 +8,9 @@ pub enum Route {
         #[route("/")]
         Home {},
 
+        #[route("/login")]
+        Login {},
+
         #[route("/create_master_password")]
         CreateMasterPassword {},
 
@@ -22,5 +25,13 @@ impl Route {
 
     pub fn home() -> Self {
         Route::Home {}
+    }
+
+    pub fn login() -> Self {
+        Route::Login {}
+    }
+
+    pub fn create_master_password() -> Self {
+        Route::CreateMasterPassword {}
     }
 }

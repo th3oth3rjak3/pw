@@ -19,3 +19,6 @@ pub use create_master_password::CreateMasterPassword;
 
 mod vault;
 pub use vault::*;
+
+mod login;
+pub use login::*;

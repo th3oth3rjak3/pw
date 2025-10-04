@@ -13,3 +13,6 @@ pub use input::*;
 
 pub mod svgs;
 pub use svgs::*;
+
+pub mod toasts;
+pub use toasts::*;

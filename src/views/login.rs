@@ -4,49 +4,59 @@ use crate::{
     components::{Button, ButtonVariant, PasswordInput},
     routes::Route,
     services::{
-        authentication::{self},
+        authentication::{self, LoginError},
         database::DatabaseService,
     },
+    AuthState,
 };
 use dioxus::prelude::*;
 use dioxus_primitives::toast::{use_toast, ToastOptions};
 
-/// The CreateMasterPassword page component that will be rendered when the current route is `[Route::CreateMasterPassword]`
+/// The Login page component that will be rendered when the current route is `[Route::Login]`
 #[component]
-pub fn CreateMasterPassword() -> Element {
+pub fn Login() -> Element {
+    let state = use_context::<Signal<AuthState>>();
     let db_service = use_context::<Arc<DatabaseService>>();
 
     // The contents of the password input field
     let mut password = use_signal(|| "".to_string());
-    let mut confirm_password = use_signal(|| "".to_string());
 
     // Error message signals
-    let mut error_message = use_signal(|| "".to_string());
+    let error_message = use_signal(|| "".to_string());
     let mut show_error = use_signal(|| false);
 
     let navigator = use_navigator();
     let toast_api = use_toast();
 
-    let set_master_password = move |raw_pw: String| {
+    let do_login = move |raw_pw: String, owned_state: AuthState| {
+        let mut state = state.clone();
         let mut password = password.clone();
+        let mut error_message = error_message.clone();
+        let mut show_error = show_error.clone();
         let navigator = navigator.clone();
         let db_service = db_service.clone();
 
         spawn(async move {
-            match authentication::set_master_password(raw_pw, &db_service).await {
-                Ok(_) => {
+            match authentication::login(raw_pw, owned_state, &db_service).await {
+                Ok(updated) => {
+                    state.set(updated);
                     password.set("".into());
-                    confirm_password.set("".into());
-                    navigator.replace(Route::login());
+                    navigator.replace(Route::vault());
                 }
-                Err(e) => toast_api.error(
-                    "Error".into(),
-                    ToastOptions::new()
-                        .description(format!(
-                            "Error occurred that requires developer attention: {e}"
-                        ))
-                        .permanent(true),
-                ),
+                Err(e) => match e {
+                    LoginError::IncorrectPassword => {
+                        error_message.set("incorrect password, try again".into());
+                        show_error.set(true);
+                    }
+                    LoginError::HashingError(err) => toast_api.error(
+                        "Error".into(),
+                        ToastOptions::new()
+                            .description(format!(
+                                "Error occurred that requires developer attention: {err}"
+                            ))
+                            .permanent(true),
+                    ),
+                },
             }
         })
     };
@@ -70,35 +80,21 @@ pub fn CreateMasterPassword() -> Element {
                 onsubmit: move |_| {
                     show_error.set(false);
                     let raw_pw = password.read().to_string();
-                    let raw_confirm_pw = confirm_password.read().to_string();
-                    if raw_pw != raw_confirm_pw {
-                        error_message.set("passwords do not match".into());
-                        show_error.set(true);
-                        return;
-                    }
-                    set_master_password(raw_pw.clone());
+                    let owned_state = state.read().clone();
+                    do_login(raw_pw.clone(), owned_state.clone());
                 },
-                PasswordInput {
-                    style: "width: 200px",
-                    name: "master_password",
-                    placeholder: "Enter Password",
-                    r#type: "password",
-                    value: password,
-                    value_changed: move |evt: FormEvent| {
-                        password.set(evt.value());
-                    },
-                
-                }
                 div {
+
                     PasswordInput {
                         style: "width: 200px",
                         name: "master_password",
-                        placeholder: "Confirm Password",
+                        placeholder: "Enter Password",
                         r#type: "password",
-                        value: confirm_password,
+                        value: password,
                         value_changed: move |evt: FormEvent| {
-                            confirm_password.set(evt.value());
+                            password.set(evt.value());
                         },
+                    
                     }
                     if show_error() {
                         div {
@@ -112,7 +108,7 @@ pub fn CreateMasterPassword() -> Element {
                     style: "width: 200px",
                     r#type: "submit",
                     variant: ButtonVariant::Secondary,
-                    "Set Master Password"
+                    "Login"
                 }
             }
         }

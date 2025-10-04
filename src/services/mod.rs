@@ -1,3 +1,3 @@
 pub mod authentication;
-pub mod master_password;
+pub mod database;
 pub mod password_entry;

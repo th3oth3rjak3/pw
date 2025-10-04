@@ -1,5 +1,5 @@
-use crate::AppState;
+use crate::AuthState;
 
-pub fn create_password_entry() -> anyhow::Result<AppState> {
+pub fn create_password_entry() -> anyhow::Result<AuthState> {
     todo!()
 }

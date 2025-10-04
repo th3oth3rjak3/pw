@@ -1,7 +1,7 @@
 use crate::{
     components::{Navbar, NavbarItem},
     services::authentication,
-    AppState, Route,
+    AuthState, Route,
 };
 use dioxus::prelude::*;
 
@@ -12,7 +12,7 @@ use dioxus::prelude::*;
 /// routes will be rendered under the outlet inside this component
 #[component]
 pub fn Layout() -> Element {
-    let mut state = use_context::<Signal<AppState>>();
+    let mut state = use_context::<Signal<AuthState>>();
 
     let signed_in = state.map(|s| &s.signed_in);
 
