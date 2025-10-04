@@ -54,29 +54,16 @@ async fn init_launcher() -> LaunchBuilder {
     let db_service =
         Arc::new(DatabaseService::new(DATA_DIR.get().unwrap().join("passwords.sqlite")).await);
 
-    let mut builder = dioxus::LaunchBuilder::desktop();
-
-    if cfg!(debug_assertions) {
-        builder = builder.with_cfg(desktop! {
+    dioxus::LaunchBuilder::desktop()
+        .with_cfg(desktop! {
             Config::new().with_window(
                 WindowBuilder::new()
                     .with_title(app_name)
-                    .with_inner_size(LogicalSize::new(800, 600))
-            )
-        })
-    } else {
-        builder = builder.with_cfg(desktop! {
-            Config::new().with_window(
-                WindowBuilder::new()
-                    .with_title(app_name)
+                    .with_min_inner_size(LogicalSize::new(600, 600))
                     .with_inner_size(LogicalSize::new(800, 600))
             ).with_menu(None)
         })
-    }
-
-    builder = builder.with_context(db_service);
-
-    builder
+        .with_context(db_service)
 }
 
 fn init_data_directory() {

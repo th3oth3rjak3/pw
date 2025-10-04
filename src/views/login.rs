@@ -94,7 +94,6 @@ pub fn Login() -> Element {
                         value_changed: move |evt: FormEvent| {
                             password.set(evt.value());
                         },
-                    
                     }
                     if show_error() {
                         div {

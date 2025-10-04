@@ -21,8 +21,8 @@ pub fn Layout() -> Element {
             rel: "stylesheet",
             href: asset!("/src/components/navbar/style.css"),
         }
-        Navbar { style: "margin-bottom: 5px",
-            if signed_in() {
+        if signed_in() {
+            Navbar { style: "margin-bottom: 5px",
                 NavbarItem {
                     index: 1usize,
                     value: "vault".to_string(),
@@ -44,13 +44,6 @@ pub fn Layout() -> Element {
             }
         }
 
-        div { style: "margin: 10px;", Outlet::<Route> {} }
-        if cfg!(debug_assertions) {
-            div { style: "position: fixed; bottom: 0; width: 100%;",
-                hr {}
-                "DEBUG INFORMATION:"
-                div { {format!("{:#?}", state.read())} }
-            }
-        }
+        div { style: "padding: 0.1rem 0.5rem 0.5rem 0.5rem;", Outlet::<Route> {} }
     }
 }

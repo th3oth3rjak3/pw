@@ -43,13 +43,18 @@ pub fn PasswordInput(props: PasswordInputProps) -> Element {
                 display: flex;
                 align-items: center;
                 width: 100%;
+                max-width: 100%;
             ",
 
             // Reuse your existing Input component
             Input {
                 value_changed: props.value_changed.clone(),
                 r#type: if show_password() { "text" } else { "password" },
-                style: "padding-right: 2.5rem;",
+                style: "
+                    width: 100%;
+                    box-sizing: border-box;
+                    padding-right: 2.5rem;
+                ",
                 attributes: props.attributes,
             }
 

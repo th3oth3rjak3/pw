@@ -22,3 +22,6 @@ pub use vault::*;
 
 mod login;
 pub use login::*;
+
+mod password_details;
+pub use password_details::*;

@@ -2,7 +2,7 @@
 -- Description: Creates the password_entries table for storing encrypted passwords
 
 CREATE TABLE IF NOT EXISTS password_entries (
-    id TEXT PRIMARY KEY NOT NULL,
+    id INTEGER PRIMARY KEY NOT NULL,
     site TEXT NOT NULL,
     username TEXT NOT NULL,
     password_hash TEXT NOT NULL
