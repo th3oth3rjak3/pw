@@ -26,39 +26,32 @@ pub fn Vault() -> Element {
         navigator.replace(Route::home());
     }
 
-    let entries: Signal<Vec<PasswordEntryRaw>> = use_signal(|| Vec::new());
+    let mut entries: Signal<Vec<PasswordEntryRaw>> = use_signal(Vec::new);
     let mut search_string = use_signal(|| "".to_string());
 
-    let search = move || {
-        let auth_state = auth_state().to_owned();
-        let db_service = db_service.clone();
-        let mut entries = entries.clone();
-        let search_string = search_string.clone();
-
-        async move {
-            match password_entry::get_all_password_entries(
-                &auth_state,
-                db_service().as_ref(),
-                search_string(),
-            )
-            .await
-            {
-                Ok(pws) => entries.set(pws),
-                Err(err) => {
-                    toast_api.error(
-                        "Error".to_string(),
-                        ToastOptions::new()
-                            .description(format!(
-                                "Unexpected error occurred while getting password entries: {err}"
-                            ))
-                            .permanent(true),
-                    );
-                }
+    let search = move || async move {
+        match password_entry::get_all_password_entries(
+            &auth_state(),
+            db_service().as_ref(),
+            search_string(),
+        )
+        .await
+        {
+            Ok(pws) => entries.set(pws),
+            Err(err) => {
+                toast_api.error(
+                    "Error".to_string(),
+                    ToastOptions::new()
+                        .description(format!(
+                            "Unexpected error occurred while getting password entries: {err}"
+                        ))
+                        .permanent(true),
+                );
             }
         }
     };
 
-    use_future(move || search());
+    use_future(search);
 
     rsx! {
         div { style: "width: 100%; display: flex; justify-content: center;",

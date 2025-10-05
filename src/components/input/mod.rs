@@ -61,7 +61,7 @@ pub fn PasswordInput(props: PasswordInputProps) -> Element {
 
             // Reuse your existing Input component
             Input {
-                value_changed: props.value_changed.clone(),
+                value_changed: props.value_changed,
                 r#type: if show_password() { "text" } else { "password" },
                 style: "
                     width: 100%;

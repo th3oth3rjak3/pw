@@ -17,6 +17,7 @@ use zeroize::Zeroizing;
 #[component]
 pub fn CreateMasterPassword() -> Element {
     let db_service = use_context::<Arc<DatabaseService>>();
+    let db_service = use_signal(|| db_service);
     let mut state = use_context::<Signal<AuthState>>();
 
     // The contents of the password input field
@@ -31,12 +32,8 @@ pub fn CreateMasterPassword() -> Element {
     let toast_api = use_toast();
 
     let set_master_password = move || {
-        let mut password = password.clone();
-        let navigator = navigator.clone();
-        let db_service = db_service.clone();
-
         spawn(async move {
-            match authentication::set_master_password(password(), &state(), &db_service).await {
+            match authentication::set_master_password(password(), &state(), &db_service()).await {
                 Ok(auth_state) => {
                     password.set(Zeroizing::new(String::new()));
                     confirm_password.set(Zeroizing::new(String::new()));

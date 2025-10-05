@@ -27,15 +27,18 @@ pub fn NewPasswordEntry() -> Element {
     let mut new_username = use_signal(|| "".to_string());
     let mut new_raw_password = use_signal(|| Zeroizing::new(String::new()));
 
-    let save_pw = move |password: PasswordEntryRaw| {
-        // clone needed signals here
-        let auth_state = auth_state().clone();
-        let db_service = db_service.clone();
-
+    let save_pw = move || {
         spawn(async move {
+            let password = PasswordEntryRaw {
+                id: 0,
+                site: new_site(),
+                username: new_username(),
+                raw_password: new_raw_password(),
+            };
+
             match password_entry::create_password_entry(
                 password,
-                &auth_state,
+                &auth_state(),
                 db_service().as_ref(),
             )
             .await
@@ -97,12 +100,7 @@ pub fn NewPasswordEntry() -> Element {
                     Button {
                         variant: ButtonVariant::Ghost,
                         onclick: move |_| {
-                            save_pw(PasswordEntryRaw {
-                                id: 0,
-                                site: new_site(),
-                                username: new_username(),
-                                raw_password: new_raw_password(),
-                            });
+                            save_pw();
                         },
                         "Save"
                     }

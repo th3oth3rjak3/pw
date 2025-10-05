@@ -20,19 +20,16 @@ pub fn Layout() -> Element {
     let navigator = use_navigator();
     let toast_api = use_toast();
 
-    use_future(move || {
-        let mut state = state.clone();
-        async move {
-            loop {
-                tokio::time::sleep(Duration::from_secs(10)).await;
-                if state.read().signed_in && state.read().is_expired() {
-                    navigator.replace(Route::home());
-                    state.set(authentication::logout());
-                    toast_api.info(
-                        "Logged Out".into(),
-                        ToastOptions::new().description("🔒 Logged out due to inactivity."),
-                    );
-                }
+    use_future(move || async move {
+        loop {
+            tokio::time::sleep(Duration::from_secs(10)).await;
+            if state.read().signed_in && state.read().is_expired() {
+                navigator.replace(Route::home());
+                state.set(authentication::logout());
+                toast_api.info(
+                    "Logged Out".into(),
+                    ToastOptions::new().description("🔒 Logged out due to inactivity."),
+                );
             }
         }
     });

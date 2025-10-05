@@ -16,29 +16,23 @@ use zeroize::Zeroizing;
 /// The Login page component that will be rendered when the current route is `[Route::Login]`
 #[component]
 pub fn Login() -> Element {
-    let state = use_context::<Signal<AuthState>>();
+    let mut state = use_context::<Signal<AuthState>>();
     let db_service = use_context::<Arc<DatabaseService>>();
+    let db_service = use_signal(|| db_service);
 
     // The contents of the password input field
     let mut password = use_signal(|| Zeroizing::new(String::new()));
 
     // Error message signals
-    let error_message = use_signal(|| "".to_string());
+    let mut error_message = use_signal(|| "".to_string());
     let mut show_error = use_signal(|| false);
 
     let navigator = use_navigator();
     let toast_api = use_toast();
 
     let do_login = move || {
-        let mut state = state.clone();
-        let mut password = password.clone();
-        let mut error_message = error_message.clone();
-        let mut show_error = show_error.clone();
-        let navigator = navigator.clone();
-        let db_service = db_service.clone();
-
         spawn(async move {
-            match authentication::login(password(), state(), &db_service).await {
+            match authentication::login(password(), state(), &db_service()).await {
                 Ok(updated) => {
                     state.set(updated);
                     password.set(Zeroizing::new(String::new()));

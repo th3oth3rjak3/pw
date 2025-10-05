@@ -40,46 +40,44 @@ pub fn PasswordDetails(id: i32) -> Element {
     // Used for the delete confirmation dialog
     let mut confirmation_open = use_signal(|| false);
 
-    use_future(move || {
-        let auth_state = auth_state().clone();
-        let db_service = db_service.clone();
-
-        async move {
-            match password_entry::get_password_entry_by_id(id, &auth_state, db_service().as_ref())
-                .await
-            {
-                Ok(pw) => {
-                    site.set(pw.site.clone());
-                    username.set(pw.username.clone());
-                    raw_password.set(pw.raw_password.clone());
-                    new_site.set(pw.site);
-                    new_username.set(pw.username);
-                    new_raw_password.set(pw.raw_password);
-                }
-                Err(err) => {
-                    toast_api.error(
-                        "Error".to_string(),
-                        ToastOptions::new()
-                            .description(format!(
-                                "Unexpected error occurred while getting password entries: {err}"
-                            ))
-                            .permanent(true),
-                    );
-                }
+    use_future(move || async move {
+        match password_entry::get_password_entry_by_id(id, &auth_state(), db_service().as_ref())
+            .await
+        {
+            Ok(pw) => {
+                site.set(pw.site.clone());
+                username.set(pw.username.clone());
+                raw_password.set(pw.raw_password.clone());
+                new_site.set(pw.site);
+                new_username.set(pw.username);
+                new_raw_password.set(pw.raw_password);
+            }
+            Err(err) => {
+                toast_api.error(
+                    "Error".to_string(),
+                    ToastOptions::new()
+                        .description(format!(
+                            "Unexpected error occurred while getting password entries: {err}"
+                        ))
+                        .permanent(true),
+                );
             }
         }
     });
 
-    let save_pw = move |password: PasswordEntryRaw| {
-        // clone needed signals here
-        let auth_state = auth_state().clone();
-        let db_service = db_service.clone();
-
+    let save_pw = move || {
         spawn(async move {
+            let password = PasswordEntryRaw {
+                id,
+                site: new_site(),
+                username: new_username(),
+                raw_password: new_raw_password(),
+            };
+
             if let Err(err) = password_entry::save_updated_password(
                 id,
                 password,
-                &auth_state,
+                &auth_state(),
                 &db_service().as_ref().pool,
             )
             .await
@@ -97,8 +95,6 @@ pub fn PasswordDetails(id: i32) -> Element {
     };
 
     let delete_pw = move |id: i32| {
-        let db_service = db_service.clone();
-
         spawn(async move {
             match password_entry::delete_password(id, db_service().as_ref()).await {
                 Ok(()) => {
@@ -183,7 +179,7 @@ pub fn PasswordDetails(id: i32) -> Element {
                                     AlertDialogCancel { "Cancel" }
                                     AlertDialogAction {
                                         on_click: move |_| {
-                                            delete_pw(id.clone());
+                                            delete_pw(id);
                                         },
                                         "Delete"
                                     }
@@ -195,12 +191,7 @@ pub fn PasswordDetails(id: i32) -> Element {
                         Button {
                             variant: ButtonVariant::Ghost,
                             onclick: move |_| {
-                                save_pw(PasswordEntryRaw {
-                                    id,
-                                    site: new_site(),
-                                    username: new_username(),
-                                    raw_password: new_raw_password(),
-                                });
+                                save_pw();
                                 editing_password.set(false);
                             },
                             "Save"

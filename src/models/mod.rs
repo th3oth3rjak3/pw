@@ -29,7 +29,7 @@ impl PasswordEntrySafe {
     fn decrypt_password(&self, auth_state: &AuthState) -> Result<String, String> {
         let key_bits = auth_state.get_key_material();
         let key = Key::<Aes256Gcm>::from_slice(&key_bits);
-        let cipher = Aes256Gcm::new(&key);
+        let cipher = Aes256Gcm::new(key);
 
         let combined = BASE64_STANDARD
             .decode(self.password_hash.clone())
@@ -37,10 +37,10 @@ impl PasswordEntrySafe {
 
         let (nonce_bytes, ciphertext) = combined.split_at(12);
 
-        let nonce: &Nonce<_> = Nonce::from_slice(&nonce_bytes);
+        let nonce: &Nonce<_> = Nonce::from_slice(nonce_bytes);
 
         let plaintext = cipher
-            .decrypt(&nonce, ciphertext)
+            .decrypt(nonce, ciphertext)
             .map_err(|err| err.to_string())?;
 
         String::from_utf8(plaintext).map_err(|err| err.to_string())
@@ -67,7 +67,7 @@ impl PasswordEntryRaw {
     fn encrypt_password(&self, auth_state: &AuthState) -> Result<String, String> {
         let key_bits = auth_state.get_key_material();
         let key = Key::<Aes256Gcm>::from_slice(&key_bits);
-        let cipher = Aes256Gcm::new(&key);
+        let cipher = Aes256Gcm::new(key);
         let nonce = Aes256Gcm::generate_nonce(&mut OsRng);
 
         let ciphertext = cipher
