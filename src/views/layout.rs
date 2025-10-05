@@ -48,8 +48,14 @@ pub fn Layout() -> Element {
                     index: 1usize,
                     value: "vault".to_string(),
                     to: Route::vault(),
-                    disabled: !state.read().signed_in,
                     "Vault"
+                }
+
+                NavbarItem {
+                    index: 2usize,
+                    value: "set master password".to_string(),
+                    to: Route::create_master_password(),
+                    "Set Master Password"
                 }
 
                 NavbarItem {

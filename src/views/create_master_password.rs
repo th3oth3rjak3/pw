@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use crate::{
     components::{Button, ButtonVariant, PasswordInput},
+    models::AuthState,
     routes::Route,
     services::{
         authentication::{self},
@@ -16,6 +17,7 @@ use zeroize::Zeroizing;
 #[component]
 pub fn CreateMasterPassword() -> Element {
     let db_service = use_context::<Arc<DatabaseService>>();
+    let mut state = use_context::<Signal<AuthState>>();
 
     // The contents of the password input field
     let mut password = use_signal(|| Zeroizing::new(String::new()));
@@ -34,11 +36,12 @@ pub fn CreateMasterPassword() -> Element {
         let db_service = db_service.clone();
 
         spawn(async move {
-            match authentication::set_master_password(password(), &db_service).await {
-                Ok(_) => {
+            match authentication::set_master_password(password(), &state(), &db_service).await {
+                Ok(auth_state) => {
                     password.set(Zeroizing::new(String::new()));
                     confirm_password.set(Zeroizing::new(String::new()));
-                    navigator.replace(Route::login());
+                    state.set(auth_state);
+                    navigator.replace(Route::vault());
                 }
                 Err(e) => toast_api.error(
                     "Error".into(),

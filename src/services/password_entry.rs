@@ -1,4 +1,4 @@
-use sqlx::{prelude::*, QueryBuilder, Sqlite};
+use sqlx::{prelude::*, QueryBuilder, Sqlite, SqliteExecutor};
 
 use crate::{
     models::{AuthState, PasswordEntryRaw, PasswordEntrySafe},
@@ -94,11 +94,11 @@ pub async fn get_password_entry_by_id(
     safe_entry.to_raw(auth_state)
 }
 
-pub async fn save_updated_password(
+pub async fn save_updated_password<'a, T: SqliteExecutor<'a>>(
     id: i32,
     password_entry: PasswordEntryRaw,
     auth_state: &AuthState,
-    db_service: &DatabaseService,
+    executor: T,
 ) -> Result<(), String> {
     let safe = password_entry.to_safe(auth_state)?;
 
@@ -109,7 +109,7 @@ pub async fn save_updated_password(
     .bind(safe.username.clone())
     .bind(safe.password_hash.clone())
     .bind(id)
-    .execute(&db_service.pool)
+    .execute(executor)
     .await
     .map_err(|err| err.to_string())?;
 

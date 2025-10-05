@@ -80,7 +80,7 @@ pub fn PasswordDetails(id: i32) -> Element {
                 id,
                 password,
                 &auth_state,
-                db_service().as_ref(),
+                &db_service().as_ref().pool,
             )
             .await
             {
