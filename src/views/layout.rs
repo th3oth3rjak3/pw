@@ -1,9 +1,12 @@
+use std::time::Duration;
+
 use crate::{
     components::{Navbar, NavbarItem},
     services::authentication,
     AuthState, Route,
 };
 use dioxus::prelude::*;
+use dioxus_primitives::toast::{use_toast, ToastOptions};
 
 /// The Navbar component that will be rendered on all pages of our app since every page is under the layout.
 ///
@@ -13,8 +16,26 @@ use dioxus::prelude::*;
 #[component]
 pub fn Layout() -> Element {
     let mut state = use_context::<Signal<AuthState>>();
-
     let signed_in = state.map(|s| &s.signed_in);
+    let navigator = use_navigator();
+    let toast_api = use_toast();
+
+    use_future(move || {
+        let mut state = state.clone();
+        async move {
+            loop {
+                tokio::time::sleep(Duration::from_secs(10)).await;
+                if state.read().signed_in && state.read().is_expired() {
+                    navigator.replace(Route::home());
+                    state.set(authentication::logout());
+                    toast_api.info(
+                        "Logged Out".into(),
+                        ToastOptions::new().description("🔒 Logged out due to inactivity."),
+                    );
+                }
+            }
+        }
+    });
 
     rsx! {
         document::Link {

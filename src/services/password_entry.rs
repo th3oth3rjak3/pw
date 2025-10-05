@@ -1,4 +1,4 @@
-use sqlx::prelude::*;
+use sqlx::{prelude::*, QueryBuilder, Sqlite};
 
 use crate::{
     models::{AuthState, PasswordEntryRaw, PasswordEntrySafe},
@@ -10,7 +10,7 @@ pub async fn create_password_entry(
     auth_state: &AuthState,
     db_service: &DatabaseService,
 ) -> Result<(), String> {
-    let safe = new_entry.to_safe(auth_state);
+    let safe = new_entry.to_safe(auth_state)?;
     sqlx::query("insert into password_entries (site, username, password_hash) values (?, ?, ?);")
         .bind(safe.site.clone())
         .bind(safe.username.clone())
@@ -24,17 +24,29 @@ pub async fn create_password_entry(
 pub async fn get_all_password_entries(
     auth_state: &AuthState,
     db_service: &DatabaseService,
+    search_string: String,
 ) -> Result<Vec<PasswordEntryRaw>, String> {
     if !auth_state.signed_in {
         return Err("You must be signed in to access these resources".into());
     }
 
-    let rows = sqlx::query("select id, site, username, password_hash from password_entries")
+    let mut builder = QueryBuilder::<Sqlite>::new(
+        "select id, site, username, password_hash from password_entries",
+    );
+
+    if !search_string.is_empty() {
+        builder
+            .push(" where site like ")
+            .push_bind(format!("%{search_string}%"));
+    }
+
+    let rows = builder
+        .build()
         .fetch_all(&db_service.pool)
         .await
         .map_err(|err| err.to_string())?;
 
-    let mut password_entries: Vec<PasswordEntrySafe> = Vec::with_capacity(rows.len());
+    let mut password_entries: Vec<PasswordEntryRaw> = Vec::with_capacity(rows.len());
 
     for row in rows {
         let id: i32 = row.get("id");
@@ -42,18 +54,18 @@ pub async fn get_all_password_entries(
         let username: String = row.get("username");
         let password_hash: String = row.get("password_hash");
 
-        password_entries.push(PasswordEntrySafe {
-            id,
-            site,
-            username,
-            password_hash,
-        });
+        password_entries.push(
+            PasswordEntrySafe {
+                id,
+                site,
+                username,
+                password_hash,
+            }
+            .to_raw(auth_state)?,
+        );
     }
 
-    Ok(password_entries
-        .into_iter()
-        .map(|safe_entry| safe_entry.to_raw(auth_state))
-        .collect::<Vec<_>>())
+    Ok(password_entries)
 }
 
 pub async fn get_password_entry_by_id(
@@ -79,7 +91,7 @@ pub async fn get_password_entry_by_id(
         password_hash: row.get("password_hash"),
     };
 
-    Ok(safe_entry.to_raw(auth_state))
+    safe_entry.to_raw(auth_state)
 }
 
 pub async fn save_updated_password(
@@ -88,7 +100,7 @@ pub async fn save_updated_password(
     auth_state: &AuthState,
     db_service: &DatabaseService,
 ) -> Result<(), String> {
-    let safe = password_entry.to_safe(auth_state);
+    let safe = password_entry.to_safe(auth_state)?;
 
     sqlx::query(
         "update password_entries set site = ?, username = ?, password_hash = ? where id = ?",

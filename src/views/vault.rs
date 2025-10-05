@@ -5,10 +5,11 @@ use dioxus_primitives::{
     scroll_area::ScrollDirection,
     toast::{use_toast, ToastOptions},
 };
+use zeroize::Zeroizing;
 
 use crate::{
-    components::{Button, ButtonVariant, Card, ScrollArea},
-    models::AuthState,
+    components::{Button, ButtonVariant, Card, Input, ScrollArea},
+    models::{AuthState, PasswordEntryRaw},
     routes::Route,
     services::{clipboard, database::DatabaseService, password_entry},
 };
@@ -17,6 +18,7 @@ use crate::{
 pub fn Vault() -> Element {
     let auth_state = use_context::<Signal<AuthState>>();
     let db_service = use_context::<Arc<DatabaseService>>();
+    let db_service = use_signal(|| db_service.clone());
     let navigator = use_navigator();
     let toast_api = use_toast();
 
@@ -24,13 +26,24 @@ pub fn Vault() -> Element {
         navigator.replace(Route::home());
     }
 
-    let entries = use_resource(move || {
-        let auth_state = auth_state().clone();
+    let entries: Signal<Vec<PasswordEntryRaw>> = use_signal(|| Vec::new());
+    let mut search_string = use_signal(|| "".to_string());
+
+    let search = move || {
+        let auth_state = auth_state().to_owned();
         let db_service = db_service.clone();
+        let mut entries = entries.clone();
+        let search_string = search_string.clone();
 
         async move {
-            match password_entry::get_all_password_entries(&auth_state, &db_service).await {
-                Ok(pws) => pws,
+            match password_entry::get_all_password_entries(
+                &auth_state,
+                db_service().as_ref(),
+                search_string(),
+            )
+            .await
+            {
+                Ok(pws) => entries.set(pws),
                 Err(err) => {
                     toast_api.error(
                         "Error".to_string(),
@@ -40,12 +53,12 @@ pub fn Vault() -> Element {
                             ))
                             .permanent(true),
                     );
-
-                    Vec::new()
                 }
             }
         }
-    });
+    };
+
+    use_future(move || search());
 
     rsx! {
         div { style: "width: 100%; display: flex; justify-content: center;",
@@ -53,7 +66,9 @@ pub fn Vault() -> Element {
                 title: "Password Vault",
                 width: "100%",
                 height: "calc(100vh - 110px)",
-                div { style: "display: block",
+                div { style: "display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;",
+
+                    // Left: Add Password button
                     Button {
                         variant: ButtonVariant::Ghost,
                         onclick: move |_| {
@@ -61,7 +76,25 @@ pub fn Vault() -> Element {
                         },
                         "Add Password"
                     }
+
+                    // Right: Search input
+                    form {
+                        style: "display: flex; margin-left: auto;",
+                        onsubmit: move |_| {
+                            spawn(async move { search().await });
+                        },
+                        Input {
+                            name: "search",
+                            placeholder: "Search",
+                            value: search_string(),
+                            value_changed: move |evt: FormEvent| {
+                                search_string.set(evt.value());
+                            },
+                            style: "width: 200px;",
+                        }
+                    }
                 }
+
                 ScrollArea {
                     height: "calc(100vh - 250px)",
                     min_height: "200px",
@@ -74,21 +107,15 @@ pub fn Vault() -> Element {
                         background-color: #1b1b1b;
                     ",
                     div { class: "scroll-content", style: "padding-top: 15px;",
-                        match entries() {
-                            Some(entries_vec) => rsx! {
-                                for entry in entries_vec.iter() {
-                                    PasswordEntryCard {
-                                        id: entry.id,
-                                        site: entry.site.clone(),
-                                        username: entry.username.clone(),
-                                        password: entry.raw_password.clone(),
-                                    }
-                                }
-                            },
-                            None => rsx! {
-                                div { style: "text-align: center; padding: 2rem;", "Loading passwords..." }
-                            },
+                        for entry in entries().iter() {
+                            PasswordEntryCard {
+                                id: entry.id,
+                                site: entry.site.clone(),
+                                username: entry.username.clone(),
+                                password: entry.raw_password.clone(),
+                            }
                         }
+
                     }
                 }
             }
@@ -97,7 +124,13 @@ pub fn Vault() -> Element {
 }
 
 #[component]
-fn PasswordEntryCard(id: i32, site: String, username: String, password: String) -> Element {
+fn PasswordEntryCard(
+    id: i32,
+    site: String,
+    username: String,
+    password: Zeroizing<String>,
+) -> Element {
+    let mut state = use_context::<Signal<AuthState>>();
     let navigator = use_navigator();
     let mut show_password = use_signal(|| false);
     let password = use_signal(|| password);
@@ -119,6 +152,7 @@ fn PasswordEntryCard(id: i32, site: String, username: String, password: String) 
                 transition: background 0.15s, border 0.15s;
             ",
             onclick: move |_| {
+                state.write().reset_idle_timer();
                 navigator.push(Route::password_details(id));
             },
 
@@ -140,7 +174,7 @@ fn PasswordEntryCard(id: i32, site: String, username: String, password: String) 
                 div { style: "font-weight: 500; min-width: 80px;", "Password:" }
                 div { style: "flex: 1; overflow: hidden; text-overflow: ellipsis;",
                     if show_password() {
-                        "{password}"
+                        {password().to_string()}
                     } else {
                         "••••••••"
                     }
@@ -167,11 +201,13 @@ fn PasswordEntryCard(id: i32, site: String, username: String, password: String) 
                     style: "width: 70px; min-width: 70px;",
                     onclick: move |evt: Event<MouseData>| {
                         evt.stop_propagation();
-                        let message = clipboard::copy_to_clipboard(password().clone());
+                        let message = clipboard::copy_with_timeout(password().clone(), 5);
                         toast_api
                             .success(
                                 "Copied!".into(),
-                                ToastOptions::new().description(message).duration(Duration::from_secs(5)),
+                                ToastOptions::new()
+                                    .description(&message)
+                                    .duration(Duration::from_secs(5)),
                             )
                     },
                     "Copy"

@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use dioxus::prelude::*;
 use dioxus_primitives::toast::{use_toast, ToastOptions};
+use zeroize::Zeroizing;
 
 use crate::{
     components::{
@@ -29,17 +30,17 @@ pub fn PasswordDetails(id: i32) -> Element {
     // Original entry details, used to restore fields once editing is cancelled
     let mut site = use_signal(|| "".to_string());
     let mut username = use_signal(|| "".to_string());
-    let mut raw_password = use_signal(|| "".to_string());
+    let mut raw_password = use_signal(|| Zeroizing::new(String::new()));
 
     // The values of the fields when editing and viewing.
     let mut new_site = use_signal(|| "".to_string());
     let mut new_username = use_signal(|| "".to_string());
-    let mut new_raw_password = use_signal(|| "".to_string());
+    let mut new_raw_password = use_signal(|| Zeroizing::new(String::new()));
 
     // Used for the delete confirmation dialog
     let mut confirmation_open = use_signal(|| false);
 
-    let entry = use_resource(move || {
+    use_future(move || {
         let auth_state = auth_state().clone();
         let db_service = db_service.clone();
 
@@ -119,107 +120,104 @@ pub fn PasswordDetails(id: i32) -> Element {
 
     let mut editing_password = use_signal(|| false);
 
-    match entry() {
-        Some(_) => rsx! {
-            div { style: "display: flex; justify-content: center; padding: 0;",
+    rsx! {
+        div { style: "display: flex; justify-content: center; padding: 0;",
 
-                Card { title: "Password Details",
+            Card { title: "Password Details",
 
-                    form { style: "display: flex; flex-direction: column",
-                        FieldGroup {
-                            Field { label: "Site",
-                                Input {
-                                    name: "site",
-                                    placeholder: "Site",
-                                    value: new_site(),
-                                    value_changed: move |evt: FormEvent| new_site.set(evt.value()),
-                                    readonly: !editing_password(),
-                                }
-                            }
-
-                            Field { label: "Username",
-                                Input {
-                                    name: "username",
-                                    placeholder: "Username",
-                                    value: new_username(),
-                                    value_changed: move |evt: FormEvent| new_username.set(evt.value()),
-                                    readonly: !editing_password(),
-                                }
-                            }
-                            Field { label: "Password",
-                                PasswordInput {
-                                    name: "password",
-                                    placeholder: "Password",
-                                    value: new_raw_password(),
-                                    value_changed: move |evt: FormEvent| new_raw_password.set(evt.value()),
-                                    readonly: !editing_password(),
-                                }
+                form { style: "display: flex; flex-direction: column",
+                    FieldGroup {
+                        Field { label: "Site",
+                            Input {
+                                name: "site",
+                                placeholder: "Site",
+                                value: new_site(),
+                                value_changed: move |evt: FormEvent| new_site.set(evt.value()),
+                                readonly: !editing_password(),
                             }
                         }
-                    }
 
-
-                    div { style: "display: flex; justify-content: flex-end; gap: 0.3rem; margin: 0;",
-                        if !editing_password() {
-                            Button {
-                                variant: ButtonVariant::Ghost,
-                                onclick: move |_| editing_password.set(true),
-                                "Edit"
-                            }
-                            Button {
-                                variant: ButtonVariant::Destructive,
-                                onclick: move |_| confirmation_open.set(true),
-                                "Delete"
-                            }
-                            AlertDialogRoot {
-                                open: confirmation_open(),
-                                on_open_change: move |v| confirmation_open.set(v),
-                                AlertDialogContent {
-                                    AlertDialogTitle { "Delete item" }
-                                    AlertDialogDescription {
-                                        "Are you sure you want to delete this item? This action cannot be undone."
-                                    }
-                                    AlertDialogActions {
-                                        AlertDialogCancel { "Cancel" }
-                                        AlertDialogAction {
-                                            on_click: move |_| {
-                                                delete_pw(id.clone());
-                                            },
-                                            "Delete"
-                                        }
-                                    }
-                                }
+                        Field { label: "Username",
+                            Input {
+                                name: "username",
+                                placeholder: "Username",
+                                value: new_username(),
+                                value_changed: move |evt: FormEvent| new_username.set(evt.value()),
+                                readonly: !editing_password(),
                             }
                         }
-                        if editing_password() {
-                            Button {
-                                variant: ButtonVariant::Ghost,
-                                onclick: move |_| {
-                                    save_pw(PasswordEntryRaw {
-                                        id,
-                                        site: new_site(),
-                                        username: new_username(),
-                                        raw_password: new_raw_password(),
-                                    });
-                                    editing_password.set(false);
-                                },
-                                "Save"
-                            }
-                            Button {
-                                variant: ButtonVariant::Ghost,
-                                onclick: move |_| {
-                                    new_site.set(site());
-                                    new_username.set(username());
-                                    new_raw_password.set(raw_password());
-                                    editing_password.set(false);
-                                },
-                                "Cancel"
+                        Field { label: "Password",
+                            PasswordInput {
+                                name: "password",
+                                placeholder: "Password",
+                                value: new_raw_password().to_string(),
+                                value_changed: move |evt: FormEvent| new_raw_password.set(Zeroizing::new(evt.value())),
+                                readonly: !editing_password(),
                             }
                         }
                     }
                 }
+
+
+                div { style: "display: flex; justify-content: flex-end; gap: 0.3rem; margin: 0;",
+                    if !editing_password() {
+                        Button {
+                            variant: ButtonVariant::Ghost,
+                            onclick: move |_| editing_password.set(true),
+                            "Edit"
+                        }
+                        Button {
+                            variant: ButtonVariant::Destructive,
+                            onclick: move |_| confirmation_open.set(true),
+                            "Delete"
+                        }
+                        AlertDialogRoot {
+                            open: confirmation_open(),
+                            on_open_change: move |v| confirmation_open.set(v),
+                            AlertDialogContent {
+                                AlertDialogTitle { "Delete item" }
+                                AlertDialogDescription {
+                                    "Are you sure you want to delete this item? This action cannot be undone."
+                                }
+                                AlertDialogActions {
+                                    AlertDialogCancel { "Cancel" }
+                                    AlertDialogAction {
+                                        on_click: move |_| {
+                                            delete_pw(id.clone());
+                                        },
+                                        "Delete"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if editing_password() {
+                        Button {
+                            variant: ButtonVariant::Ghost,
+                            onclick: move |_| {
+                                save_pw(PasswordEntryRaw {
+                                    id,
+                                    site: new_site(),
+                                    username: new_username(),
+                                    raw_password: new_raw_password(),
+                                });
+                                editing_password.set(false);
+                            },
+                            "Save"
+                        }
+                        Button {
+                            variant: ButtonVariant::Ghost,
+                            onclick: move |_| {
+                                new_site.set(site());
+                                new_username.set(username());
+                                new_raw_password.set(raw_password());
+                                editing_password.set(false);
+                            },
+                            "Cancel"
+                        }
+                    }
+                }
             }
-        },
-        _ => rsx! {},
+        }
     }
 }

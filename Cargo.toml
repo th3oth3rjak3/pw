@@ -4,24 +4,17 @@ version = "0.1.0"
 authors = ["Jake Hathaway <jake.d.hathaway@gmail.com>"]
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-anyhow = "1.0.100"
+aes-gcm = "0.10.3"
 arboard = { version = "3.6.1", features = ["wayland-data-control"] }
 argon2 = { version = "0.5.3", features = ["std"] }
+base64 = "0.22.1"
 dioxus = { version = "0.7.0-rc.0", features = ["router"] }
 dioxus-primitives = { git = "https://github.com/DioxusLabs/components", version = "0.0.1" }
 directories = "6.0.0"
-serde = { version = "1.0.228", features = ["derive"] }
-serde_json = "1.0.145"
-sqlx = { version = "0.8.6", features = [
-    "sqlite",
-    "runtime-tokio",
-    "migrate",
-    "macros",
-] }
+sqlx = { version = "0.8.6", features = ["sqlite", "runtime-tokio", "migrate"] }
 tokio = "1.47.1"
+zeroize = "1.8.2"
 
 [features]
 default = ["desktop"]

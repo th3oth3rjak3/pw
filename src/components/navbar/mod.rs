@@ -3,6 +3,8 @@ use dioxus_primitives::navbar::{
     self, NavbarContentProps, NavbarItemProps, NavbarNavProps, NavbarProps, NavbarTriggerProps,
 };
 
+use crate::models::AuthState;
+
 #[component]
 pub fn Navbar(props: NavbarProps) -> Element {
     rsx! {
@@ -62,6 +64,7 @@ pub fn NavbarContent(props: NavbarContentProps) -> Element {
 
 #[component]
 pub fn NavbarItem(props: NavbarItemProps) -> Element {
+    let mut state = use_context::<Signal<AuthState>>();
     rsx! {
         navbar::NavbarItem {
             class: "navbar-item",
@@ -73,7 +76,12 @@ pub fn NavbarItem(props: NavbarItemProps) -> Element {
             active_class: props.active_class,
             attributes: props.attributes,
             on_select: props.on_select,
-            onclick: props.onclick,
+            onclick: move |evt| {
+                state.write().reset_idle_timer();
+                if let Some(func) = props.onclick {
+                    func.call(evt);
+                }
+            },
             onmounted: props.onmounted,
             {props.children}
         }
@@ -97,13 +105,17 @@ pub struct NavbarButtonProps {
 /// to another location.
 #[component]
 pub fn NavbarButton(props: NavbarButtonProps) -> Element {
+    let mut state = use_context::<Signal<AuthState>>();
     let disabled = move || (props.disabled)();
 
     rsx! {
         a {
             class: "navbar-item",
             "data-disabled": disabled(),
-            onclick: props.onclick,
+            onclick: move |evt| {
+                state.write().reset_idle_timer();
+                props.onclick.call(evt);
+            },
             ..props.attributes,
             {props.children}
 

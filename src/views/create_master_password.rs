@@ -10,6 +10,7 @@ use crate::{
 };
 use dioxus::prelude::*;
 use dioxus_primitives::toast::{use_toast, ToastOptions};
+use zeroize::Zeroizing;
 
 /// The CreateMasterPassword page component that will be rendered when the current route is `[Route::CreateMasterPassword]`
 #[component]
@@ -17,8 +18,8 @@ pub fn CreateMasterPassword() -> Element {
     let db_service = use_context::<Arc<DatabaseService>>();
 
     // The contents of the password input field
-    let mut password = use_signal(|| "".to_string());
-    let mut confirm_password = use_signal(|| "".to_string());
+    let mut password = use_signal(|| Zeroizing::new(String::new()));
+    let mut confirm_password = use_signal(|| Zeroizing::new(String::new()));
 
     // Error message signals
     let mut error_message = use_signal(|| "".to_string());
@@ -27,16 +28,16 @@ pub fn CreateMasterPassword() -> Element {
     let navigator = use_navigator();
     let toast_api = use_toast();
 
-    let set_master_password = move |raw_pw: String| {
+    let set_master_password = move || {
         let mut password = password.clone();
         let navigator = navigator.clone();
         let db_service = db_service.clone();
 
         spawn(async move {
-            match authentication::set_master_password(raw_pw, &db_service).await {
+            match authentication::set_master_password(password(), &db_service).await {
                 Ok(_) => {
-                    password.set("".into());
-                    confirm_password.set("".into());
+                    password.set(Zeroizing::new(String::new()));
+                    confirm_password.set(Zeroizing::new(String::new()));
                     navigator.replace(Route::login());
                 }
                 Err(e) => toast_api.error(
@@ -65,23 +66,21 @@ pub fn CreateMasterPassword() -> Element {
             ",
                 onsubmit: move |_| {
                     show_error.set(false);
-                    let raw_pw = password.read().to_string();
-                    let raw_confirm_pw = confirm_password.read().to_string();
-                    if raw_pw != raw_confirm_pw {
+                    if password() != confirm_password() {
                         error_message.set("passwords do not match".into());
                         show_error.set(true);
                         return;
                     }
-                    set_master_password(raw_pw.clone());
+                    set_master_password();
                 },
                 PasswordInput {
                     style: "width: 200px",
                     name: "master_password",
                     placeholder: "Enter Password",
                     r#type: "password",
-                    value: password,
+                    value: password().to_string(),
                     value_changed: move |evt: FormEvent| {
-                        password.set(evt.value());
+                        password.set(Zeroizing::new(evt.value()));
                     },
                 }
                 div {
@@ -90,9 +89,9 @@ pub fn CreateMasterPassword() -> Element {
                         name: "master_password",
                         placeholder: "Confirm Password",
                         r#type: "password",
-                        value: confirm_password,
+                        value: confirm_password().to_string(),
                         value_changed: move |evt: FormEvent| {
-                            confirm_password.set(evt.value());
+                            confirm_password.set(Zeroizing::new(evt.value()));
                         },
                     }
                     if show_error() {

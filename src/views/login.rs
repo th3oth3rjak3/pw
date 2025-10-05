@@ -11,6 +11,7 @@ use crate::{
 };
 use dioxus::prelude::*;
 use dioxus_primitives::toast::{use_toast, ToastOptions};
+use zeroize::Zeroizing;
 
 /// The Login page component that will be rendered when the current route is `[Route::Login]`
 #[component]
@@ -19,7 +20,7 @@ pub fn Login() -> Element {
     let db_service = use_context::<Arc<DatabaseService>>();
 
     // The contents of the password input field
-    let mut password = use_signal(|| "".to_string());
+    let mut password = use_signal(|| Zeroizing::new(String::new()));
 
     // Error message signals
     let error_message = use_signal(|| "".to_string());
@@ -28,7 +29,7 @@ pub fn Login() -> Element {
     let navigator = use_navigator();
     let toast_api = use_toast();
 
-    let do_login = move |raw_pw: String, owned_state: AuthState| {
+    let do_login = move || {
         let mut state = state.clone();
         let mut password = password.clone();
         let mut error_message = error_message.clone();
@@ -37,10 +38,10 @@ pub fn Login() -> Element {
         let db_service = db_service.clone();
 
         spawn(async move {
-            match authentication::login(raw_pw, owned_state, &db_service).await {
+            match authentication::login(password(), state(), &db_service).await {
                 Ok(updated) => {
                     state.set(updated);
-                    password.set("".into());
+                    password.set(Zeroizing::new(String::new()));
                     navigator.replace(Route::vault());
                 }
                 Err(e) => match e {
@@ -79,9 +80,7 @@ pub fn Login() -> Element {
             ",
                 onsubmit: move |_| {
                     show_error.set(false);
-                    let raw_pw = password.read().to_string();
-                    let owned_state = state.read().clone();
-                    do_login(raw_pw.clone(), owned_state.clone());
+                    do_login();
                 },
                 div {
 
@@ -90,9 +89,9 @@ pub fn Login() -> Element {
                         name: "master_password",
                         placeholder: "Enter Password",
                         r#type: "password",
-                        value: password,
+                        value: password().to_string(),
                         value_changed: move |evt: FormEvent| {
-                            password.set(evt.value());
+                            password.set(Zeroizing::new(evt.value()));
                         },
                     }
                     if show_error() {

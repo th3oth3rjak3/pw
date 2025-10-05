@@ -1,7 +1,10 @@
 use dioxus::prelude::*;
 
+use crate::models::AuthState;
+
 #[derive(Copy, Clone, PartialEq, Default)]
 #[non_exhaustive]
+#[allow(unused)]
 pub enum ButtonVariant {
     #[default]
     Primary,
@@ -34,6 +37,8 @@ pub fn Button(
     onmouseup: Option<EventHandler<MouseEvent>>,
     children: Element,
 ) -> Element {
+    let mut state = use_context::<Signal<AuthState>>();
+
     rsx! {
         document::Link {
             rel: "stylesheet",
@@ -44,6 +49,7 @@ pub fn Button(
             class: "button",
             "data-style": variant.class(),
             onclick: move |event| {
+                state.write().reset_idle_timer();
                 if let Some(f) = &onclick {
                     f.call(event);
                 }

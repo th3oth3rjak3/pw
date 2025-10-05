@@ -1,6 +1,9 @@
 use dioxus::prelude::*;
 
-use crate::components::{EyeClosed, EyeOpen};
+use crate::{
+    components::{EyeClosed, EyeOpen},
+    models::AuthState,
+};
 
 #[derive(Debug, Clone, Props, PartialEq)]
 pub struct InputProps {
@@ -14,12 +17,22 @@ pub struct InputProps {
 
 #[component]
 pub fn Input(props: InputProps) -> Element {
+    let mut state = use_context::<Signal<AuthState>>();
+
     rsx! {
         document::Link {
             rel: "stylesheet",
             href: asset!("/src/components/input/style.css"),
         }
-        input { class: "input", oninput: props.value_changed, ..props.attributes, {props.children} }
+        input {
+            class: "input",
+            oninput: move |evt| {
+                state.write().reset_idle_timer();
+                props.value_changed.call(evt);
+            },
+            ..props.attributes,
+            {props.children}
+        }
     }
 }
 

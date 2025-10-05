@@ -1,9 +1,13 @@
+use std::time::Instant;
+
 use crate::{models::AuthState, services::database::DatabaseService};
 use argon2::{
     password_hash::{rand_core::OsRng, SaltString},
     Argon2, PasswordHash, PasswordHasher, PasswordVerifier,
 };
+use sqlx::prelude::*;
 use sqlx::SqlitePool;
+use zeroize::Zeroizing;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum LoginError {
@@ -12,11 +16,11 @@ pub enum LoginError {
 }
 
 pub async fn login(
-    raw_pw: String,
+    raw_pw: Zeroizing<String>,
     mut state: AuthState,
     db_service: &DatabaseService,
 ) -> Result<AuthState, LoginError> {
-    let saved_hash = get_master_password_hash(&db_service.pool)
+    let (saved_hash, key_derivation_salt) = get_master_password_hash(&db_service.pool)
         .await
         .expect("Could not get master password hash from the database");
 
@@ -28,8 +32,10 @@ pub async fn login(
         .verify_password(raw_pw.as_bytes(), &parsed_hash)
         .is_ok()
     {
-        // TODO: set the expiry time.
         state.signed_in = true;
+        state.raw_master_password = raw_pw;
+        state.salt = Zeroizing::new(key_derivation_salt);
+        state.last_activity = Instant::now();
         Ok(state)
     } else {
         Err(LoginError::IncorrectPassword)
@@ -37,13 +43,15 @@ pub async fn login(
 }
 
 pub async fn set_master_password(
-    raw_pw: String,
+    raw_pw: Zeroizing<String>,
     db_service: &DatabaseService,
 ) -> Result<(), String> {
     let hash = hash_new_master_password(&raw_pw).map_err(|err| err.to_string())?;
+    let salt = SaltString::generate(&mut OsRng).to_string();
 
-    sqlx::query("update master_password set password_hash = ? where id = 1;")
+    sqlx::query("update master_password set password_hash = ?, key_salt = ? where id = 1;")
         .bind(hash)
+        .bind(salt)
         .execute(&db_service.pool)
         .await
         .map(|_| ())
@@ -55,20 +63,19 @@ pub fn logout() -> AuthState {
 }
 
 pub async fn is_master_password_set(db_service: &DatabaseService) -> Result<bool, String> {
-    let hash = get_master_password_hash(&db_service.pool)
+    let (hash, _) = get_master_password_hash(&db_service.pool)
         .await
         .map_err(|err| err.to_string())?;
 
     Ok(!hash.is_empty())
 }
 
-async fn get_master_password_hash(pool: &SqlitePool) -> Result<String, sqlx::Error> {
-    let hash =
-        sqlx::query_scalar::<_, String>("SELECT password_hash FROM master_password WHERE id = 1")
-            .fetch_one(pool)
-            .await?;
+async fn get_master_password_hash(pool: &SqlitePool) -> Result<(String, String), sqlx::Error> {
+    let row = sqlx::query("SELECT password_hash, key_salt FROM master_password WHERE id = 1")
+        .fetch_one(pool)
+        .await?;
 
-    Ok(hash)
+    Ok((row.get("password_hash"), row.get("key_salt")))
 }
 
 fn hash_new_master_password(password: &str) -> Result<String, String> {

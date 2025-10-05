@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use dioxus::prelude::*;
 use dioxus_primitives::toast::{use_toast, ToastOptions};
+use zeroize::Zeroizing;
 
 use crate::{
     components::{Button, ButtonVariant, Card, Field, FieldGroup, Input, PasswordInput},
@@ -24,7 +25,7 @@ pub fn NewPasswordEntry() -> Element {
 
     let mut new_site = use_signal(|| "".to_string());
     let mut new_username = use_signal(|| "".to_string());
-    let mut new_raw_password = use_signal(|| "".to_string());
+    let mut new_raw_password = use_signal(|| Zeroizing::new(String::new()));
 
     let save_pw = move |password: PasswordEntryRaw| {
         // clone needed signals here
@@ -84,8 +85,8 @@ pub fn NewPasswordEntry() -> Element {
                             PasswordInput {
                                 name: "password",
                                 placeholder: "Password",
-                                value: new_raw_password(),
-                                value_changed: move |evt: FormEvent| new_raw_password.set(evt.value()),
+                                value: new_raw_password().to_string(),
+                                value_changed: move |evt: FormEvent| new_raw_password.set(Zeroizing::new(evt.value())),
                             }
                         }
                     }
