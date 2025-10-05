@@ -3,11 +3,9 @@ use dioxus_primitives::toast::{self, ToastProviderProps};
 
 #[component]
 pub fn ToastProvider(props: ToastProviderProps) -> Element {
+    let style = include_str!("./style.css");
     rsx! {
-        document::Link {
-            rel: "stylesheet",
-            href: asset!("/src/components/toasts/style.css"),
-        }
+        style { {style} }
         toast::ToastProvider {
             default_duration: props.default_duration,
             max_toasts: props.max_toasts,

@@ -18,12 +18,10 @@ pub struct InputProps {
 #[component]
 pub fn Input(props: InputProps) -> Element {
     let mut state = use_context::<Signal<AuthState>>();
+    let style = include_str!("./style.css");
 
     rsx! {
-        document::Link {
-            rel: "stylesheet",
-            href: asset!("/src/components/input/style.css"),
-        }
+        style { {style} }
         input {
             class: "input",
             oninput: move |evt| {

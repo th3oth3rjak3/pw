@@ -34,11 +34,10 @@ pub fn Layout() -> Element {
         }
     });
 
+    let navbar_style = include_str!("../components/navbar/style.css");
+
     rsx! {
-        document::Link {
-            rel: "stylesheet",
-            href: asset!("/src/components/navbar/style.css"),
-        }
+        style { {navbar_style} }
         if signed_in() {
             Navbar { style: "margin-bottom: 5px",
                 NavbarItem {

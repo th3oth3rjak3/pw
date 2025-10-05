@@ -7,11 +7,11 @@ use crate::models::AuthState;
 
 #[component]
 pub fn Navbar(props: NavbarProps) -> Element {
+    let style = include_str!("./style.css");
+
     rsx! {
-        document::Link {
-            rel: "stylesheet",
-            href: asset!("/src/components/navbar/style.css"),
-        }
+        style { {style} }
+
         navbar::Navbar {
             class: "navbar",
             disabled: props.disabled,

@@ -1,5 +1,5 @@
 [package]
-name = "pw"
+name = "password-manager"
 version = "0.1.0"
 authors = ["Jake Hathaway <jake.d.hathaway@gmail.com>"]
 edition = "2021"

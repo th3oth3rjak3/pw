@@ -3,7 +3,7 @@
 [web.app]
 
 # HTML title tag content
-title = "pw"
+title = "password-manager"
 
 # include `assets` in web platform
 [web.resource]
@@ -19,3 +19,8 @@ script = []
 # Javascript code file
 # serve: [dev-server] only
 script = []
+
+[bundle]
+identifier = "com.github.th3oth3rjak3"
+publisher = "Jake Hathaway"
+icon = ["assets/lock.png"]

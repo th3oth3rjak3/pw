@@ -38,12 +38,9 @@ pub fn Button(
     children: Element,
 ) -> Element {
     let mut state = use_context::<Signal<AuthState>>();
-
+    let style = include_str!("./style.css");
     rsx! {
-        document::Link {
-            rel: "stylesheet",
-            href: asset!("/src/components/button/style.css"),
-        }
+        style { {style} }
 
         button {
             class: "button",

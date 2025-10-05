@@ -19,10 +19,6 @@ use routes::Route;
 
 use crate::{components::ToastProvider, models::AuthState, services::database::DatabaseService};
 
-const FAVICON: Asset = asset!("/assets/favicon.ico");
-const MAIN_CSS: Asset = asset!("/assets/styling/main.css");
-const COMPONENT_CSS: Asset = asset!("/assets/styling/dx-components-theme.css");
-
 static DATA_DIR: OnceLock<PathBuf> = OnceLock::new();
 
 fn main() {
@@ -39,10 +35,12 @@ fn main() {
 fn App() -> Element {
     provide_context(Signal::new(AuthState::default()));
 
+    let main_css = include_str!("../assets/styling/main.css");
+    let dx_component_theme = include_str!("../assets/styling/dx-components-theme.css");
+
     rsx! {
-        document::Link { rel: "icon", href: FAVICON }
-        document::Link { rel: "stylesheet", href: MAIN_CSS }
-        document::Link { rel: "stylesheet", href: COMPONENT_CSS }
+        style { {main_css} }
+        style { {dx_component_theme} }
 
         ToastProvider { Router::<Route> {} }
     }
@@ -61,7 +59,8 @@ async fn init_launcher() -> LaunchBuilder {
                     .with_title(app_name)
                     .with_min_inner_size(LogicalSize::new(600, 600))
                     .with_inner_size(LogicalSize::new(800, 600))
-            ).with_menu(None)
+            )
+            .with_menu(None)
         })
         .with_context(db_service)
 }
